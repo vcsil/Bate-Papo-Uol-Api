@@ -1,3 +1,4 @@
+import { ObjectId } from 'mongodb';
 import express from 'express';
 import dotenv from 'dotenv';
 import dayjs from 'dayjs';
@@ -205,38 +206,78 @@ app.post('/status', async (req, res) => {
 
 })
 
-setInterval(async () => {
-  const horaAtualizada = Date.now();
-  // console.log(chalk.cyan('Iniciando'))
+app.delete('/messages/:ID_DA_MENSAGEM', async (req, res) => {
+  const user = req.headers.user;
+  const ID_DA_MENSAGEM = req.params.ID_DA_MENSAGEM;
+
+  console.log(user, ID_DA_MENSAGEM)
+
   try {
     let db = await concectarServidor();
     if (db) {
-      const participantes = await db.collection('participante').find().toArray();
-      let participantesOff = participantes.filter( i => {
-        return horaAtualizada - i.lastStatus > 10000;
-      });
+      const mensagemExiste = await db.collection('mensagem').findOne( { _id: new ObjectId(ID_DA_MENSAGEM) } );
 
-      participantesOff.forEach(async (obj) => {
-        // console.log(horaAtualizada - obj.lastStatus)
-        await db.collection('participante').deleteOne( { name: obj.name } );
-        await db.collection('mensagem').insertOne({
-          from: obj.name,
-          to: 'Todos',
-          text: 'sai da sala...',
-          type: 'status',
-          time: dayjs(Date.now()).format('HH:mm:ss')
-        })
-      });
+      if (!mensagemExiste) {
+        res.sendStatus(404);
+        desconcectarServidor();
+        return
+      }
+
+      if (user === mensagemExiste.from && mensagemExiste.type !== 'status') {
+        await db.collection('mensagem').deleteOne( { _id: new ObjectId(ID_DA_MENSAGEM)} );
+        res.sendStatus(200)
+        desconcectarServidor();
+        return
+      }
+
+      res.sendStatus(401);
+      desconcectarServidor();
       return
-    };
-  } catch (err) {
+    }
+
+    res.status(502).send("Servidor não conectou");
+    desconcectarServidor();
+
+  } catch (err ) {
     console.error(err);
-    console.log(500);
+    res.sendStatus(500);
     desconcectarServidor();
   }
 
+})
 
-}, process.env.TEMPO_REMOCAO);
+// setInterval(async () => {
+//   const horaAtualizada = Date.now();
+//   // console.log(chalk.cyan('Iniciando'))
+//   try {
+//     let db = await concectarServidor();
+//     if (db) {
+//       const participantes = await db.collection('participante').find().toArray();
+//       let participantesOff = participantes.filter( i => {
+//         return horaAtualizada - i.lastStatus > 10000;
+//       });
+
+//       participantesOff.forEach(async (obj) => {
+//         // console.log(horaAtualizada - obj.lastStatus)
+//         await db.collection('participante').deleteOne( { name: obj.name } );
+//         await db.collection('mensagem').insertOne({
+//           from: obj.name,
+//           to: 'Todos',
+//           text: 'sai da sala...',
+//           type: 'status',
+//           time: dayjs(Date.now()).format('HH:mm:ss')
+//         })
+//       });
+//       return
+//     };
+//   } catch (err) {
+//     console.error(err);
+//     console.log(500);
+//     desconcectarServidor();
+//   }
+
+
+// }, process.env.TEMPO_REMOCAO);
 
 app.listen(process.env.PORTA_SERVIDOR, () => {
   console.log(chalk.blue(`\nServidor inicializado na porta ${process.env.PORTA_SERVIDOR}`))
