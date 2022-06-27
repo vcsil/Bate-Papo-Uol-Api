@@ -131,6 +131,37 @@ app.post('/messages', async (req, res) => {
 
 });
 
+app.get('/messages', async (req, res) => {
+  const usuario = req.headers.user;
+  const quantidadeMensagem = Number(req.query.limit);
+
+  try {
+    let db = await concectarServidor();
+    if (db) {
+      const mensagens = await db.collection('mensagem').find().toArray();
+      let filtro = mensagens.filter(i => {
+        return i.to === 'Todos' || i.to === usuario
+      })
+
+      if (quantidadeMensagem) {
+        filtro = filtro.slice(filtro.length - quantidadeMensagem, filtro.length);
+        res.status(200).send(filtro)
+        return
+      }
+      res.status(200).send(filtro)
+      return
+    }
+
+    res.status(502).send("Servidor não conectou");
+
+  } catch (err) {
+    desconcectarServidor();
+    console.error(err);
+    res.sendStatus(500);
+  }
+
+});
+
 app.listen(process.env.PORTA_SERVIDOR, () => {
   console.log(chalk.blue(`\nServidor inicializado na porta ${process.env.PORTA_SERVIDOR}`))
 })
