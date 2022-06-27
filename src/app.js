@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import dayjs from 'dayjs';
 import chalk from 'chalk';
 import cors from 'cors';
+import joi from 'joi';
 
 import { participanteSchema } from './validationJoi.js';
 import { concectarServidor, desconcectarServidor } from './server.js';
@@ -26,7 +27,7 @@ app.post('/participants', async (req, res) => {
 
   const validacao = participanteSchema.validate(corpoParticipante);
   if (validacao.error) {
-    res.status(422).send(validacao.error.details[0].message)
+    res.status(422).send(validacao.error.details[0].message);
     return
   }
 
@@ -36,7 +37,7 @@ app.post('/participants', async (req, res) => {
       const participante = await db.collection('participante').find().toArray();
       const nomeRepetido = participante.find( usuario => usuario.name === name);
       if (nomeRepetido) {
-        res.sendStatus(409)
+        res.sendStatus(409);
         return
       }
 
@@ -69,6 +70,54 @@ app.get('/participants', async (req, res) => {
     if (db) {
       const participante = await db.collection('participante').find().toArray();
       res.status(200).send(participante)
+      return
+    }
+
+    res.status(502).send("Servidor não conectou");
+
+  } catch (err) {
+    desconcectarServidor();
+    console.error(err);
+    res.sendStatus(500);
+  }
+
+});
+
+app.post('/messages', async (req, res) => {
+  const { to, text, type } = req.body;
+  const from = req.headers.user;
+  const corpoMensagem = {
+    from,
+    to,
+    text,
+    type,
+    time: dayjs(Date.now()).format('HH:MM:SS')
+  };
+
+  try {
+    let db = await concectarServidor();
+    if (db) {
+      const participantes = await db.collection('participante').find().toArray();
+      const participantesNomeLista = participantes.map(i => {return i.name});
+      
+      const mensagemSchema = joi.object({
+        from: joi.string().valid(...participantesNomeLista).required(),
+        to: joi.string().invalid("").required(),
+        text: joi.string().invalid("").required(),
+        type: joi.string().valid("message", "private_message").required(),
+        time: joi.string().required()
+      })
+
+      const validacao = mensagemSchema.validate(corpoMensagem);
+      if (validacao.error) {
+        res.setMaxListeners(422).send(validacao.error.details[0].message)
+        return
+      }
+
+
+      await db.collection('mensagem').insertOne(corpoMensagem)
+
+      res.sendStatus(201)
       return
     }
 
