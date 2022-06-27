@@ -17,5 +17,3 @@ export function desconcectarServidor() {
   mongoClient.close()
   return
 }
-
-// export default { concectarServidor, desconcectarServidor };
