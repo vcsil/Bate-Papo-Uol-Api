@@ -37,6 +37,7 @@ app.post('/participants', async (req, res) => {
       const nomeRepetido = await db.collection('participante').findOne({ name: name });
       if (nomeRepetido) {
         res.sendStatus(409);
+        desconcectarServidor();
         return
       }
 
@@ -50,10 +51,12 @@ app.post('/participants', async (req, res) => {
       })
 
       res.sendStatus(201)
+      desconcectarServidor();
       return
     }
 
     res.status(502).send("Servidor não conectou");
+    desconcectarServidor();
 
   } catch (err) {
     desconcectarServidor();
@@ -69,10 +72,12 @@ app.get('/participants', async (req, res) => {
     if (db) {
       const participante = await db.collection('participante').find().toArray();
       res.status(200).send(participante)
+      desconcectarServidor();
       return
     }
 
     res.status(502).send("Servidor não conectou");
+    desconcectarServidor();
 
   } catch (err) {
     desconcectarServidor();
@@ -109,18 +114,20 @@ app.post('/messages', async (req, res) => {
 
       const validacao = mensagemSchema.validate(corpoMensagem);
       if (validacao.error) {
-        res.setMaxListeners(422).send(validacao.error.details[0].message)
+        res.status(422).send(validacao.error.details[0].message);
+        desconcectarServidor();
         return
       }
 
       await db.collection('mensagem').insertOne(corpoMensagem)
 
       res.sendStatus(201)
+      desconcectarServidor();
       return
     }
 
     res.status(502).send("Servidor não conectou");
-
+    desconcectarServidor();
   } catch (err) {
     desconcectarServidor();
     console.error(err);
@@ -144,13 +151,16 @@ app.get('/messages', async (req, res) => {
       if (quantidadeMensagem) {
         filtro = filtro.slice(filtro.length - quantidadeMensagem, filtro.length);
         res.status(200).send(filtro)
+        desconcectarServidor();
         return
       }
       res.status(200).send(filtro)
+      desconcectarServidor();
       return
     }
 
     res.status(502).send("Servidor não conectou");
+    desconcectarServidor();
 
   } catch (err) {
     desconcectarServidor();
@@ -159,6 +169,41 @@ app.get('/messages', async (req, res) => {
   }
 
 });
+
+app.post('/status', async (req, res) => {
+  const usuario = req.headers.user;
+
+  try {
+    let db = await concectarServidor();
+    if (db) {
+      const usuarioExiste = await db.collection('participante').findOne( { name: usuario } );
+      if (!usuarioExiste) {
+        res.sendStatus(404);
+        desconcectarServidor();
+        return
+      };
+      
+      await db.collection('participante').updateOne({
+        name: usuario
+      }, {
+        $set: {lastStatus: Date.now()}
+      })
+
+      res.sendStatus(200);
+      desconcectarServidor();
+      return 
+    }
+    
+    res.status(502).send("Servidor não conectou");
+    desconcectarServidor();
+    
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(500);
+    desconcectarServidor();
+  }
+
+})
 
 app.listen(process.env.PORTA_SERVIDOR, () => {
   console.log(chalk.blue(`\nServidor inicializado na porta ${process.env.PORTA_SERVIDOR}`))
