@@ -47,7 +47,7 @@ app.post('/participants', async (req, res) => {
         to: 'Todos',
         text: 'entra na sala...',
         type: 'status',
-        time: dayjs(corpoParticipante.lastStatus).format('HH:MM:SS')
+        time: dayjs(corpoParticipante.lastStatus).format('HH:mm:ss')
       })
 
       res.sendStatus(201)
@@ -91,7 +91,7 @@ app.post('/messages', async (req, res) => {
     to,
     text,
     type,
-    time: dayjs(Date.now()).format('HH:MM:SS')
+    time: dayjs(Date.now()).format('HH:mm:ss')
   };
 
   try {
