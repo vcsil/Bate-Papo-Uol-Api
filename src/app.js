@@ -196,7 +196,7 @@ app.post('/status', async (req, res) => {
     
     res.status(502).send("Servidor não conectou");
     desconcectarServidor();
-    
+
   } catch (err) {
     console.error(err);
     res.sendStatus(500);
@@ -204,6 +204,39 @@ app.post('/status', async (req, res) => {
   }
 
 })
+
+setInterval(async () => {
+  const horaAtualizada = Date.now();
+  // console.log(chalk.cyan('Iniciando'))
+  try {
+    let db = await concectarServidor();
+    if (db) {
+      const participantes = await db.collection('participante').find().toArray();
+      let participantesOff = participantes.filter( i => {
+        return horaAtualizada - i.lastStatus > 10000;
+      });
+
+      participantesOff.forEach(async (obj) => {
+        // console.log(horaAtualizada - obj.lastStatus)
+        await db.collection('participante').deleteOne( { name: obj.name } );
+        await db.collection('mensagem').insertOne({
+          from: obj.name,
+          to: 'Todos',
+          text: 'sai da sala...',
+          type: 'status',
+          time: dayjs(Date.now()).format('HH:mm:ss')
+        })
+      });
+      return
+    };
+  } catch (err) {
+    console.error(err);
+    console.log(500);
+    desconcectarServidor();
+  }
+
+
+}, process.env.TEMPO_REMOCAO);
 
 app.listen(process.env.PORTA_SERVIDOR, () => {
   console.log(chalk.blue(`\nServidor inicializado na porta ${process.env.PORTA_SERVIDOR}`))
