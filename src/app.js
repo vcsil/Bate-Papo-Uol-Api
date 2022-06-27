@@ -5,8 +5,8 @@ import chalk from 'chalk';
 import cors from 'cors';
 import joi from 'joi';
 
-import { participanteSchema } from './validationJoi.js';
 import { concectarServidor, desconcectarServidor } from './server.js';
+import { participanteSchema } from './validationJoi.js';
 
 // Chamando as funções pq só funcionou depois que abriu e fechou a primeira vez
 concectarServidor();
@@ -34,8 +34,7 @@ app.post('/participants', async (req, res) => {
   try {
     let db = await concectarServidor();
     if (db) {
-      const participante = await db.collection('participante').find().toArray();
-      const nomeRepetido = participante.find( usuario => usuario.name === name);
+      const nomeRepetido = await db.collection('participante').findOne({ name: name });
       if (nomeRepetido) {
         res.sendStatus(409);
         return
@@ -97,7 +96,7 @@ app.post('/messages', async (req, res) => {
   try {
     let db = await concectarServidor();
     if (db) {
-      const participantes = await db.collection('participante').find().toArray();
+      const participantes = await db.collection('participante').find({}, {name:1, _id:0}).toArray();
       const participantesNomeLista = participantes.map(i => {return i.name});
       
       const mensagemSchema = joi.object({
@@ -113,7 +112,6 @@ app.post('/messages', async (req, res) => {
         res.setMaxListeners(422).send(validacao.error.details[0].message)
         return
       }
-
 
       await db.collection('mensagem').insertOne(corpoMensagem)
 
