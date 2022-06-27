@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import chalk from 'chalk';
 import cors from 'cors';
 
+import { participanteSchema, mensagemSchema } from './validadtionJoi.js';
+
 dotenv.config();
 
 const app = express();
